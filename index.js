@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//                       DISCORD MUSIC BOT 2025
-//                    Full Version with YouTube Fix
+//                       DISCORD MUSIC BOT 2025 v3.0
+//                      Fixed Audio with YouTubei
 // ═══════════════════════════════════════════════════════════════════════════
 
 const {
@@ -13,8 +13,9 @@ const {
     Routes,
     ActivityType
 } = require('discord.js');
+
 const { Player, QueryType } = require('discord-player');
-const playdl = require('play-dl');
+const { YoutubeiExtractor } = require('discord-player-youtubei');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -31,19 +32,19 @@ app.get('/', (req, res) => {
     const hours = Math.floor(uptime / 3600);
     const minutes = Math.floor((uptime % 3600) / 60);
     const seconds = uptime % 60;
-    
+
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>🎵 Music Bot Status</title>
+            <title>🎵 Vee Music Bot</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
                     font-family: 'Segoe UI', Arial, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     color: #fff;
                     min-height: 100vh;
                     display: flex;
@@ -52,42 +53,38 @@ app.get('/', (req, res) => {
                     padding: 20px;
                 }
                 .container {
-                    background: rgba(255,255,255,0.1);
+                    background: rgba(0,0,0,0.3);
                     padding: 40px;
                     border-radius: 20px;
                     text-align: center;
                     backdrop-filter: blur(10px);
                     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-                    max-width: 400px;
-                    width: 100%;
                 }
                 h1 { font-size: 2.5em; margin-bottom: 10px; }
                 .status {
                     display: inline-block;
                     background: #00ff88;
                     color: #000;
-                    padding: 8px 20px;
-                    border-radius: 20px;
+                    padding: 10px 25px;
+                    border-radius: 25px;
                     font-weight: bold;
                     margin: 15px 0;
+                    animation: pulse 2s infinite;
                 }
-                .info {
-                    background: rgba(0,0,0,0.3);
-                    padding: 15px;
-                    border-radius: 10px;
-                    margin: 15px 0;
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
                 }
-                .info p { margin: 8px 0; }
+                .info { margin-top: 20px; opacity: 0.9; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>🎵 Music Bot</h1>
+                <h1>🎵 Vee Music</h1>
                 <div class="status">✅ ONLINE</div>
                 <div class="info">
                     <p>⏱️ Uptime: ${hours}h ${minutes}m ${seconds}s</p>
-                    <p>📅 ${new Date().toLocaleString()}</p>
-                    <p>🔧 Version: 2.0.0</p>
+                    <p>🔧 Version 3.0.0</p>
                 </div>
             </div>
         </body>
@@ -96,74 +93,15 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-        memory: process.memoryUsage(),
-        version: '2.0.0'
-    });
+    res.json({ status: 'ok', uptime: process.uptime() });
 });
 
 app.listen(PORT, () => {
-    console.log(`🌐 Web server running on port ${PORT}`);
+    console.log(`🌐 Web server: port ${PORT}`);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-//                          COOKIE SETUP FOR YOUTUBE
-// ═══════════════════════════════════════════════════════════════════════════
-
-async function loadCookies() {
-    try {
-        const cookiesPath = path.join(__dirname, 'cookies.txt');
-
-        if (fs.existsSync(cookiesPath)) {
-            console.log('🍪 Found cookies.txt, loading...');
-            const cookieContent = fs.readFileSync(cookiesPath, 'utf8');
-
-            const cookies = [];
-            const lines = cookieContent.split('\n');
-
-            for (const line of lines) {
-                const trimmedLine = line.trim();
-                if (trimmedLine && !trimmedLine.startsWith('#')) {
-                    const parts = trimmedLine.split('\t');
-                    if (parts.length >= 7) {
-                        cookies.push({
-                            name: parts[5],
-                            value: parts[6].trim()
-                        });
-                    }
-                }
-            }
-
-            if (cookies.length > 0) {
-                const cookieString = cookies
-                    .map(c => `${c.name}=${c.value}`)
-                    .join('; ');
-
-                await playdl.setToken({
-                    youtube: {
-                        cookie: cookieString
-                    }
-                });
-
-                console.log(`✅ Loaded ${cookies.length} YouTube cookies!`);
-                return true;
-            } else {
-                console.log('⚠️ cookies.txt found but no valid cookies parsed');
-            }
-        } else {
-            console.log('⚠️ No cookies.txt found, running without cookies');
-        }
-    } catch (error) {
-        console.error('❌ Error loading cookies:', error.message);
-    }
-    return false;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//                          DISCORD CLIENT SETUP
+//                          DISCORD CLIENT
 // ═══════════════════════════════════════════════════════════════════════════
 
 const client = new Client({
@@ -171,31 +109,86 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.MessageContent
     ]
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-//                          MUSIC PLAYER SETUP
+//                          MUSIC PLAYER WITH YOUTUBEI
 // ═══════════════════════════════════════════════════════════════════════════
 
 const player = new Player(client, {
+    skipFFmpeg: false,
     ytdlOptions: {
         quality: 'highestaudio',
-        highWaterMark: 1 << 25,
-        filter: 'audioonly'
-    },
-    skipFFmpeg: false
+        highWaterMark: 1 << 25
+    }
 });
 
+// Load cookies untuk YouTube
+function loadCookies() {
+    try {
+        const cookiesPath = path.join(__dirname, 'cookies.txt');
+        if (fs.existsSync(cookiesPath)) {
+            const content = fs.readFileSync(cookiesPath, 'utf8');
+            const cookies = [];
+            
+            for (const line of content.split('\n')) {
+                const trimmed = line.trim();
+                if (trimmed && !trimmed.startsWith('#')) {
+                    const parts = trimmed.split('\t');
+                    if (parts.length >= 7) {
+                        cookies.push({
+                            name: parts[5],
+                            value: parts[6].trim(),
+                            domain: parts[0],
+                            path: parts[2],
+                            secure: parts[3] === 'TRUE',
+                            httpOnly: false,
+                            sameSite: 'Lax'
+                        });
+                    }
+                }
+            }
+            
+            console.log(`🍪 Loaded ${cookies.length} cookies`);
+            return cookies;
+        }
+    } catch (error) {
+        console.error('❌ Cookie error:', error.message);
+    }
+    return [];
+}
+
+// Setup player dengan YouTubei extractor
 async function setupPlayer() {
     try {
-        await loadCookies();
-        await player.extractors.loadDefault();
-        console.log('✅ Music player ready!');
+        const cookies = loadCookies();
+        
+        // Register YouTubei extractor (lebih stabil dari YouTube scraper)
+        await player.extractors.register(YoutubeiExtractor, {
+            authentication: cookies.length > 0 ? '' : undefined,
+            cookie: cookies.length > 0 ? cookies : undefined,
+            streamOptions: {
+                useClient: 'ANDROID'
+            }
+        });
+        
+        // Load default extractors untuk platform lain
+        await player.extractors.loadDefault((ext) => ext !== 'YouTubeExtractor');
+        
+        console.log('✅ Player ready with YouTubei!');
+        
     } catch (error) {
         console.error('❌ Player setup error:', error);
+        
+        // Fallback ke default extractors
+        try {
+            await player.extractors.loadDefault();
+            console.log('✅ Fallback: Default extractors loaded');
+        } catch (e) {
+            console.error('❌ Fallback failed:', e);
+        }
     }
 }
 
@@ -204,11 +197,11 @@ async function setupPlayer() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 process.on('unhandledRejection', (error) => {
-    console.error('Unhandled rejection:', error);
+    console.error('Unhandled:', error);
 });
 
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught exception:', error);
+    console.error('Uncaught:', error);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -216,125 +209,95 @@ process.on('uncaughtException', (error) => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 player.events.on('playerStart', (queue, track) => {
+    console.log(`▶️ Playing: ${track.title}`);
+    
     const embed = new EmbedBuilder()
         .setColor(0x00FF00)
         .setTitle('🎵 Now Playing')
         .setDescription(`**[${track.title}](${track.url})**`)
         .addFields(
             { name: '👤 Artist', value: track.author || 'Unknown', inline: true },
-            { name: '⏱️ Duration', value: track.duration || 'Unknown', inline: true },
+            { name: '⏱️ Duration', value: track.duration || '0:00', inline: true },
             { name: '🔊 Volume', value: `${queue.node.volume}%`, inline: true }
         )
         .setThumbnail(track.thumbnail)
-        .setFooter({ text: `Requested by ${track.requestedBy?.username || 'Unknown'}` })
         .setTimestamp();
 
     queue.metadata.channel.send({ embeds: [embed] }).catch(console.error);
 });
 
 player.events.on('audioTrackAdd', (queue, track) => {
-    if (queue.tracks.size > 0) {
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription(`✅ **${track.title}** added to queue!`)
-            .addFields(
-                { name: 'Position', value: `#${queue.tracks.size}`, inline: true },
-                { name: 'Duration', value: track.duration || 'Unknown', inline: true }
-            )
-            .setTimestamp();
-        queue.metadata.channel.send({ embeds: [embed] }).catch(console.error);
-    }
+    console.log(`➕ Added: ${track.title}`);
 });
 
 player.events.on('playerError', (queue, error) => {
-    console.error('Player error:', error);
-    const embed = new EmbedBuilder()
-        .setColor(0xFF0000)
-        .setTitle('❌ Player Error')
-        .setDescription(error.message || 'An error occurred')
-        .setTimestamp();
-    queue.metadata.channel.send({ embeds: [embed] }).catch(console.error);
+    console.error('Player Error:', error);
+    queue.metadata.channel.send(`❌ Error: ${error.message}`).catch(console.error);
 });
 
 player.events.on('error', (queue, error) => {
-    console.error('Queue error:', error);
+    console.error('Queue Error:', error);
+});
+
+player.events.on('connection', (queue) => {
+    console.log('🔗 Voice connected!');
+});
+
+player.events.on('disconnect', (queue) => {
+    console.log('🔌 Voice disconnected');
 });
 
 player.events.on('emptyQueue', (queue) => {
-    const embed = new EmbedBuilder()
-        .setColor(0x0099FF)
-        .setDescription('✅ Queue finished!')
-        .setTimestamp();
-    queue.metadata.channel.send({ embeds: [embed] }).catch(console.error);
+    queue.metadata.channel.send('✅ Queue finished!').catch(console.error);
 });
 
 player.events.on('emptyChannel', (queue) => {
-    const embed = new EmbedBuilder()
-        .setColor(0xFFFF00)
-        .setDescription('⚠️ Voice channel is empty, leaving...')
-        .setTimestamp();
-    queue.metadata.channel.send({ embeds: [embed] }).catch(console.error);
+    queue.metadata.channel.send('👋 Left empty channel').catch(console.error);
+});
+
+// Debug event untuk audio
+player.events.on('debug', (queue, message) => {
+    if (message.includes('error') || message.includes('Error')) {
+        console.log('🔧 Debug:', message);
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-//                          SLASH COMMANDS REGISTRATION
+//                          SLASH COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════
 
 const commands = [
     new SlashCommandBuilder()
         .setName('play')
-        .setDescription('Play a song from YouTube')
+        .setDescription('Play a song')
         .addStringOption(opt =>
             opt.setName('query')
-                .setDescription('Song name or YouTube URL')
+                .setDescription('Song name or URL')
                 .setRequired(true)
         ),
-
-    new SlashCommandBuilder()
-        .setName('skip')
-        .setDescription('Skip the current song'),
-
-    new SlashCommandBuilder()
-        .setName('stop')
-        .setDescription('Stop music and clear queue'),
-
-    new SlashCommandBuilder()
-        .setName('pause')
-        .setDescription('Pause the music'),
-
-    new SlashCommandBuilder()
-        .setName('resume')
-        .setDescription('Resume the music'),
-
-    new SlashCommandBuilder()
-        .setName('queue')
-        .setDescription('Show music queue'),
-
-    new SlashCommandBuilder()
-        .setName('nowplaying')
-        .setDescription('Show current song'),
-
+    new SlashCommandBuilder().setName('skip').setDescription('Skip song'),
+    new SlashCommandBuilder().setName('stop').setDescription('Stop music'),
+    new SlashCommandBuilder().setName('pause').setDescription('Pause music'),
+    new SlashCommandBuilder().setName('resume').setDescription('Resume music'),
+    new SlashCommandBuilder().setName('queue').setDescription('Show queue'),
+    new SlashCommandBuilder().setName('np').setDescription('Now playing'),
     new SlashCommandBuilder()
         .setName('volume')
-        .setDescription('Set volume (0-100)')
+        .setDescription('Set volume')
         .addIntegerOption(opt =>
             opt.setName('level')
-                .setDescription('Volume level')
+                .setDescription('0-100')
                 .setRequired(true)
                 .setMinValue(0)
                 .setMaxValue(100)
         ),
-
-    new SlashCommandBuilder()
-        .setName('shuffle')
-        .setDescription('Shuffle the queue'),
-
+    new SlashCommandBuilder().setName('shuffle').setDescription('Shuffle queue'),
     new SlashCommandBuilder()
         .setName('loop')
-        .setDescription('Set loop mode')
+        .setDescription('Loop mode')
         .addStringOption(opt =>
             opt.setName('mode')
-                .setDescription('Loop mode')
+                .setDescription('Mode')
                 .setRequired(true)
                 .addChoices(
                     { name: 'Off', value: 'off' },
@@ -342,27 +305,19 @@ const commands = [
                     { name: 'Queue', value: 'queue' }
                 )
         ),
-
-    new SlashCommandBuilder()
-        .setName('clear')
-        .setDescription('Clear the queue'),
-
-    new SlashCommandBuilder()
-        .setName('ping')
-        .setDescription('Check bot latency')
-
+    new SlashCommandBuilder().setName('clear').setDescription('Clear queue'),
+    new SlashCommandBuilder().setName('ping').setDescription('Bot ping')
 ].map(cmd => cmd.toJSON());
 
 // ═══════════════════════════════════════════════════════════════════════════
-//                          BOT READY EVENT
+//                          BOT READY
 // ═══════════════════════════════════════════════════════════════════════════
 
 client.once(Events.ClientReady, async (c) => {
-    console.log('═══════════════════════════════════════════════════════');
-    console.log(`✅ Bot online: ${c.user.tag}`);
+    console.log('═══════════════════════════════════════════');
+    console.log(`✅ Bot: ${c.user.tag}`);
     console.log(`📊 Servers: ${c.guilds.cache.size}`);
-    console.log(`🆔 ID: ${c.user.id}`);
-    console.log('═══════════════════════════════════════════════════════');
+    console.log('═══════════════════════════════════════════');
 
     client.user.setPresence({
         activities: [{ name: '🎵 /play', type: ActivityType.Listening }],
@@ -372,94 +327,15 @@ client.once(Events.ClientReady, async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
     try {
-        console.log('🔄 Registering slash commands...');
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
-        console.log('✅ Slash commands registered!');
+        console.log('✅ Commands registered!');
     } catch (error) {
-        console.error('❌ Command registration error:', error);
+        console.error('❌ Command error:', error);
     }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-//                          SEARCH FUNCTION WITH FALLBACK
-// ═══════════════════════════════════════════════════════════════════════════
-
-async function searchTrack(query, requestedBy) {
-    console.log(`🔍 Searching: ${query}`);
-
-    // Method 1: discord-player search
-    try {
-        const result = await player.search(query, {
-            requestedBy: requestedBy,
-            searchEngine: QueryType.AUTO
-        });
-
-        if (result.hasTracks()) {
-            console.log('✅ Found via discord-player');
-            return result;
-        }
-    } catch (e) {
-        console.log('⚠️ discord-player search failed:', e.message);
-    }
-
-    // Method 2: play-dl untuk URL YouTube
-    if (query.includes('youtube.com') || query.includes('youtu.be')) {
-        try {
-            console.log('🔄 Trying play-dl for YouTube URL...');
-            const info = await playdl.video_info(query);
-            if (info) {
-                const result = await player.search(info.video_details.title, {
-                    requestedBy: requestedBy,
-                    searchEngine: QueryType.YOUTUBE_SEARCH
-                });
-                if (result.hasTracks()) {
-                    console.log('✅ Found via play-dl URL');
-                    return result;
-                }
-            }
-        } catch (e) {
-            console.log('⚠️ play-dl URL failed:', e.message);
-        }
-    }
-
-    // Method 3: play-dl search
-    try {
-        console.log('🔄 Trying play-dl search...');
-        const searchResults = await playdl.search(query, { limit: 1 });
-        if (searchResults.length > 0) {
-            const result = await player.search(searchResults[0].title, {
-                requestedBy: requestedBy,
-                searchEngine: QueryType.YOUTUBE_SEARCH
-            });
-            if (result.hasTracks()) {
-                console.log('✅ Found via play-dl search');
-                return result;
-            }
-        }
-    } catch (e) {
-        console.log('⚠️ play-dl search failed:', e.message);
-    }
-
-    // Method 4: Direct YouTube search
-    try {
-        console.log('🔄 Trying direct YouTube search...');
-        const result = await player.search(query, {
-            requestedBy: requestedBy,
-            searchEngine: QueryType.YOUTUBE_SEARCH
-        });
-        if (result.hasTracks()) {
-            console.log('✅ Found via YouTube search');
-            return result;
-        }
-    } catch (e) {
-        console.log('⚠️ YouTube search failed:', e.message);
-    }
-
-    return null;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//                          INTERACTION HANDLER
+//                          COMMAND HANDLER
 // ═══════════════════════════════════════════════════════════════════════════
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -468,193 +344,180 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const { commandName, options, member, guild, channel } = interaction;
     const voiceChannel = member?.voice?.channel;
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /ping
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'ping') {
         const embed = new EmbedBuilder()
             .setColor(0x0099FF)
             .setTitle('🏓 Pong!')
             .addFields(
-                { name: 'Bot Latency', value: `${Date.now() - interaction.createdTimestamp}ms`, inline: true },
-                { name: 'API Latency', value: `${Math.round(client.ws.ping)}ms`, inline: true }
-            )
-            .setTimestamp();
+                { name: 'Latency', value: `${Date.now() - interaction.createdTimestamp}ms`, inline: true },
+                { name: 'API', value: `${Math.round(client.ws.ping)}ms`, inline: true }
+            );
         return interaction.reply({ embeds: [embed] });
     }
 
-    // Voice channel check
-    if (['play', 'skip', 'stop', 'pause', 'resume', 'volume', 'shuffle', 'loop', 'clear'].includes(commandName)) {
-        if (!voiceChannel) {
-            const embed = new EmbedBuilder()
-                .setColor(0xFF0000)
-                .setDescription('❌ You must be in a voice channel!')
-                .setTimestamp();
-            return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
+    // Voice check
+    const needsVoice = ['play', 'skip', 'stop', 'pause', 'resume', 'volume', 'shuffle', 'loop', 'clear'];
+    if (needsVoice.includes(commandName) && !voiceChannel) {
+        return interaction.reply({ content: '❌ Join a voice channel first!', ephemeral: true });
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /play
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'play') {
         const query = options.getString('query');
         await interaction.deferReply();
 
         try {
-            const result = await searchTrack(query, interaction.user);
+            console.log(`🔍 Searching: ${query}`);
 
-            if (!result || !result.hasTracks()) {
-                const embed = new EmbedBuilder()
-                    .setColor(0xFF0000)
-                    .setTitle('❌ No Results Found')
-                    .setDescription(`Could not find: **${query}**`)
-                    .addFields({
-                        name: '💡 Tips',
-                        value: '• Try searching with song title\n• Check if URL is correct\n• Make sure video is public'
-                    })
-                    .setTimestamp();
-                return interaction.editReply({ embeds: [embed] });
+            // Search dengan multiple methods
+            let result = await player.search(query, {
+                requestedBy: interaction.user,
+                searchEngine: QueryType.AUTO
+            });
+
+            if (!result.hasTracks()) {
+                // Fallback: coba YouTube search
+                result = await player.search(query, {
+                    requestedBy: interaction.user,
+                    searchEngine: QueryType.YOUTUBE_SEARCH
+                });
             }
 
-            const { track } = await player.play(voiceChannel, result, {
+            if (!result.hasTracks()) {
+                return interaction.editReply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor(0xFF0000)
+                            .setDescription(`❌ No results for: **${query}**`)
+                    ]
+                });
+            }
+
+            console.log(`✅ Found: ${result.tracks[0].title}`);
+
+            // Play dengan settings yang benar
+            const { track, queue } = await player.play(voiceChannel, result, {
                 nodeOptions: {
                     metadata: { channel, guild },
                     volume: 80,
                     leaveOnEmpty: true,
                     leaveOnEmptyCooldown: 60000,
-                    leaveOnEnd: true,
+                    leaveOnEnd: false,
                     leaveOnEndCooldown: 60000,
-                    selfDeaf: true
+                    selfDeaf: true,
+                    skipOnNoStream: true
                 }
             });
+
+            console.log(`🎵 Playing: ${track.title}`);
 
             const embed = new EmbedBuilder()
                 .setColor(0x00FF00)
                 .setTitle('🎵 Added to Queue')
                 .setDescription(`**[${track.title}](${track.url})**`)
                 .addFields(
-                    { name: 'Duration', value: track.duration || 'Unknown', inline: true },
+                    { name: 'Duration', value: track.duration || '0:00', inline: true },
                     { name: 'Artist', value: track.author || 'Unknown', inline: true }
                 )
-                .setThumbnail(track.thumbnail)
-                .setTimestamp();
+                .setThumbnail(track.thumbnail);
 
             return interaction.editReply({ embeds: [embed] });
 
         } catch (error) {
-            console.error('Play error:', error);
-            const embed = new EmbedBuilder()
-                .setColor(0xFF0000)
-                .setTitle('❌ Error')
-                .setDescription(`Failed to play: **${query}**`)
-                .addFields({ name: 'Error', value: `\`\`\`${error.message}\`\`\`` })
-                .setTimestamp();
-            return interaction.editReply({ embeds: [embed] });
+            console.error('Play Error:', error);
+            return interaction.editReply({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor(0xFF0000)
+                        .setTitle('❌ Error')
+                        .setDescription(`\`\`\`${error.message}\`\`\``)
+                ]
+            });
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /skip
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'skip') {
         const queue = player.nodes.get(guild.id);
-        if (!queue || !queue.isPlaying()) {
-            return interaction.reply({ content: '❌ Nothing is playing!', ephemeral: true });
+        if (!queue?.isPlaying()) {
+            return interaction.reply({ content: '❌ Nothing playing!', ephemeral: true });
         }
-        const current = queue.currentTrack;
+        const title = queue.currentTrack.title;
         queue.node.skip();
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription(`⏭️ Skipped: **${current.title}**`)
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply(`⏭️ Skipped: **${title}**`);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /stop
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'stop') {
         const queue = player.nodes.get(guild.id);
         if (!queue) {
-            return interaction.reply({ content: '❌ Nothing is playing!', ephemeral: true });
+            return interaction.reply({ content: '❌ Nothing playing!', ephemeral: true });
         }
         queue.delete();
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription('⏹️ Stopped and cleared queue!')
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply('⏹️ Stopped!');
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /pause
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'pause') {
         const queue = player.nodes.get(guild.id);
-        if (!queue || !queue.isPlaying()) {
-            return interaction.reply({ content: '❌ Nothing is playing!', ephemeral: true });
-        }
-        if (queue.node.isPaused()) {
-            return interaction.reply({ content: '⚠️ Already paused!', ephemeral: true });
+        if (!queue?.isPlaying()) {
+            return interaction.reply({ content: '❌ Nothing playing!', ephemeral: true });
         }
         queue.node.pause();
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription('⏸️ Paused!')
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply('⏸️ Paused!');
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /resume
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'resume') {
         const queue = player.nodes.get(guild.id);
         if (!queue) {
-            return interaction.reply({ content: '❌ Nothing is playing!', ephemeral: true });
-        }
-        if (!queue.node.isPaused()) {
-            return interaction.reply({ content: '⚠️ Not paused!', ephemeral: true });
+            return interaction.reply({ content: '❌ Nothing playing!', ephemeral: true });
         }
         queue.node.resume();
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription('▶️ Resumed!')
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply('▶️ Resumed!');
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /queue
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'queue') {
         const queue = player.nodes.get(guild.id);
-        if (!queue || !queue.currentTrack) {
-            return interaction.reply({ content: '❌ Queue is empty!', ephemeral: true });
+        if (!queue?.currentTrack) {
+            return interaction.reply({ content: '❌ Queue empty!', ephemeral: true });
         }
 
-        const tracks = queue.tracks.map((t, i) => `**${i + 1}.** ${t.title} - \`${t.duration}\``)
-            .slice(0, 10).join('\n');
+        const tracks = queue.tracks.map((t, i) => `**${i + 1}.** ${t.title}`).slice(0, 10).join('\n');
 
         const embed = new EmbedBuilder()
             .setColor(0x0099FF)
-            .setTitle('📋 Music Queue')
+            .setTitle('📋 Queue')
             .addFields(
-                { name: '🎵 Now Playing', value: `**${queue.currentTrack.title}** - \`${queue.currentTrack.duration}\`` },
-                { name: `📝 Up Next (${queue.tracks.size})`, value: tracks || 'No more songs' }
-            )
-            .setTimestamp();
+                { name: '🎵 Now', value: queue.currentTrack.title },
+                { name: `📝 Next (${queue.tracks.size})`, value: tracks || 'Empty' }
+            );
         return interaction.reply({ embeds: [embed] });
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // /nowplaying
-    // ─────────────────────────────────────────────────────────────────────
-    if (commandName === 'nowplaying') {
+    // ───────────────────────────────────────────────────────────────────────
+    // /np
+    // ───────────────────────────────────────────────────────────────────────
+    if (commandName === 'np') {
         const queue = player.nodes.get(guild.id);
-        if (!queue || !queue.currentTrack) {
-            return interaction.reply({ content: '❌ Nothing is playing!', ephemeral: true });
+        if (!queue?.currentTrack) {
+            return interaction.reply({ content: '❌ Nothing playing!', ephemeral: true });
         }
 
         const track = queue.currentTrack;
@@ -663,117 +526,94 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
             .setTitle('🎵 Now Playing')
-            .setDescription(`**[${track.title}](${track.url})**`)
+            .setDescription(`**${track.title}**`)
             .addFields(
                 { name: '👤 Artist', value: track.author || 'Unknown', inline: true },
-                { name: '⏱️ Duration', value: track.duration || 'Unknown', inline: true },
-                { name: '🔊 Volume', value: `${queue.node.volume}%`, inline: true },
+                { name: '⏱️ Duration', value: track.duration || '0:00', inline: true },
                 { name: '📊 Progress', value: progress || '▬▬▬▬▬▬▬▬▬▬' }
             )
-            .setThumbnail(track.thumbnail)
-            .setTimestamp();
+            .setThumbnail(track.thumbnail);
         return interaction.reply({ embeds: [embed] });
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /volume
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'volume') {
         const queue = player.nodes.get(guild.id);
         if (!queue) {
-            return interaction.reply({ content: '❌ Nothing is playing!', ephemeral: true });
+            return interaction.reply({ content: '❌ Nothing playing!', ephemeral: true });
         }
         const level = options.getInteger('level');
         queue.node.setVolume(level);
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription(`🔊 Volume set to **${level}%**`)
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply(`🔊 Volume: **${level}%**`);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /shuffle
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'shuffle') {
         const queue = player.nodes.get(guild.id);
         if (!queue || queue.tracks.size < 2) {
-            return interaction.reply({ content: '❌ Need at least 2 songs!', ephemeral: true });
+            return interaction.reply({ content: '❌ Need 2+ songs!', ephemeral: true });
         }
         queue.tracks.shuffle();
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription(`🔀 Shuffled ${queue.tracks.size} songs!`)
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply('🔀 Shuffled!');
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /loop
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'loop') {
         const queue = player.nodes.get(guild.id);
         if (!queue) {
-            return interaction.reply({ content: '❌ Nothing is playing!', ephemeral: true });
+            return interaction.reply({ content: '❌ Nothing playing!', ephemeral: true });
         }
         const mode = options.getString('mode');
         const modes = { 'off': 0, 'track': 1, 'queue': 2 };
-        const emojis = { 'off': '➡️', 'track': '🔂', 'queue': '🔁' };
         queue.setRepeatMode(modes[mode]);
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription(`${emojis[mode]} Loop: **${mode.toUpperCase()}**`)
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply(`🔁 Loop: **${mode}**`);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // /clear
-    // ─────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     if (commandName === 'clear') {
         const queue = player.nodes.get(guild.id);
         if (!queue || queue.tracks.size === 0) {
-            return interaction.reply({ content: '❌ Queue is already empty!', ephemeral: true });
+            return interaction.reply({ content: '❌ Queue empty!', ephemeral: true });
         }
         const count = queue.tracks.size;
         queue.tracks.clear();
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setDescription(`🗑️ Cleared **${count}** songs!`)
-            .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply(`🗑️ Cleared ${count} songs!`);
     }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-//                          BOT INITIALIZATION
+//                          START BOT
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function startBot() {
+async function start() {
     console.log('');
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('       🎵 DISCORD MUSIC BOT 2025 - STARTING...         ');
-    console.log('═══════════════════════════════════════════════════════');
+    console.log('═══════════════════════════════════════════');
+    console.log('    🎵 DISCORD MUSIC BOT v3.0 STARTING     ');
+    console.log('═══════════════════════════════════════════');
     console.log('');
 
-    // Setup player
     await setupPlayer();
 
-    // Check token
     const token = process.env.DISCORD_TOKEN;
     if (!token) {
-        console.error('❌ DISCORD_TOKEN not found!');
-        console.error('   Set it in Render Environment Variables');
+        console.error('❌ No DISCORD_TOKEN!');
         process.exit(1);
     }
 
-    // Login
     try {
         await client.login(token);
     } catch (error) {
-        console.error('❌ Login failed:', error.message);
+        console.error('❌ Login failed:', error);
         process.exit(1);
     }
 }
 
-startBot();
+start();
