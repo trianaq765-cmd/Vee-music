@@ -1,13 +1,11 @@
 services:
   - type: web
-    name: discord-music-bot
+    name: vee-music
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install --legacy-peer-deps
     startCommand: npm start
     envVars:
       - key: DISCORD_TOKEN
         sync: false
-      - key: NODE_ENV
-        value: production
