@@ -1,11 +1,18 @@
 services:
   - type: web
-    name: vee-music
-    runtime: node
+    name: discord-music-bot
+    runtime: docker
     region: singapore
     plan: free
-    buildCommand: npm install --legacy-peer-deps
-    startCommand: npm start
+    
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    
     envVars:
       - key: DISCORD_TOKEN
         sync: false
+      - key: PORT
+        value: 3000
+        
+    healthCheckPath: /health
+    autoDeploy: true
